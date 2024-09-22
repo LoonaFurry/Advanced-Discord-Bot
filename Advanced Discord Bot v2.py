@@ -48,6 +48,7 @@ from scipy.stats import entropy
 from networkx.readwrite import json_graph
 import spacy
 from transformers import pipeline
+from PIL import Image
 
 def error_tracker(func):
     @functools.wraps(func)
@@ -115,7 +116,7 @@ intents.message_content = True
 intents.members = True
 
 # Replace these with your actual keys
-discord_token = ("-discord-bot-token")
+discord_token = ("discord-bot-token")
 gemini_api_key = ("gemini-api-key")
 
 if not discord_token or not gemini_api_key:
@@ -1747,6 +1748,9 @@ def json_hatalarını_düzelt(dosya_yolu: str) -> Dict:
 
 
 # --- Discord Events ---
+from PIL import Image
+import io
+
 @bot.event
 async def on_message(mesaj: discord.Message):
     global aktif_kullanıcılar, hata_sayacı, yanıt_süresi_histogramı, yanıt_süresi_özeti
@@ -1771,12 +1775,21 @@ async def on_message(mesaj: discord.Message):
                 if attachment.content_type.startswith('image'):
                     await mesaj.channel.send("Resmi analiz ediyorum... Bu işlem bir dakika kadar sürebilir.")
                     
-                    image_data = await resim_indir(attachment)
-                    if image_data:
-                        prompt = f"Bu resmi analiz et ve şu soruya cevap ver: {içerik}"
-                        analiz = await resim_analiz_et(image_data, prompt)
-                        await mesaj.channel.send(analiz)
-                        return
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(attachment.url) as response:
+                            if response.status == 200:
+                                image_data = await response.read()
+                                image = Image.open(io.BytesIO(image_data))
+                                
+                                prompt = f"Bu resmi analiz et ve şu soruya cevap ver: {içerik}"
+                                response = model.generate_content([prompt, image])
+                                
+                                await mesaj.channel.send(response.text)
+                                return
+                            else:
+                                logging.error(f"Failed to download image: HTTP status {response.status}")
+                                await mesaj.channel.send("Resmi indirirken bir hata oluştu. Lütfen tekrar deneyin.")
+                                return
 
         if kullanıcı_kimliği not in kullanıcı_profilleri:
             kullanıcı_profilleri[kullanıcı_kimliği] = {
