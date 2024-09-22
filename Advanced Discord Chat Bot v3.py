@@ -89,10 +89,10 @@ except OSError:
 
 # Image generation model
 try:
-    image_generator = pipeline("text-to-image", model="black-forest-labs/FLUX.1-dev")
+    image_generator = pipeline("text-to-image", model="black-forest-labs/FLUX.1-schnell")
 except OSError:
     print("Downloading FLUX.1-dev model...")
-    image_generator = pipeline("text-to-image", model="black-forest-labs/FLUX.1-dev")
+    image_generator = pipeline("text-to-image", model="black-forest-labs/FLUX.1-schnell")
 
 
 class AdvancedAIAssistant:
