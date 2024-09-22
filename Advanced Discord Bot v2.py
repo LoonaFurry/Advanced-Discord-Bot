@@ -115,7 +115,7 @@ intents.message_content = True
 intents.members = True
 
 # Replace these with your actual keys
-discord_token = ("discord-bot-token")
+discord_token = ("-discord-bot-token")
 gemini_api_key = ("gemini-api-key")
 
 if not discord_token or not gemini_api_key:
@@ -1750,52 +1750,27 @@ def json_hatalarını_düzelt(dosya_yolu: str) -> Dict:
 @bot.event
 async def on_message(mesaj: discord.Message):
     global aktif_kullanıcılar, hata_sayacı, yanıt_süresi_histogramı, yanıt_süresi_özeti
-    aktif_kullanıcılar += 1
-    logging.debug(f"New message received: {mesaj.content}")
 
     if mesaj.author == bot.user:
         logging.debug("Message is from the bot itself, ignoring.")
         return
+
+    if bot.user not in mesaj.mentions:
+        return  # Exit if the bot is not mentioned
+
+    aktif_kullanıcılar += 1
+    logging.debug(f"New message received: {mesaj.content}")
 
     kullanıcı_kimliği = str(mesaj.author.id)
     içerik = mesaj.content.strip()
     logging.debug(f"User ID: {kullanıcı_kimliği}, Content: {içerik}")
 
     try:
-        if bot.user in mesaj.mentions and mesaj.attachments:
+        if mesaj.attachments:
             for attachment in mesaj.attachments:
                 if attachment.content_type.startswith('image'):
                     await mesaj.channel.send("Resmi analiz ediyorum... Bu işlem bir dakika kadar sürebilir.")
                     
-                    async def resim_indir(attachment: discord.Attachment) -> bytes:
-                        try:
-                            image_data = await attachment.read()
-                            logging.info(f"Resim başarıyla indirildi. Boyut: {len(image_data)} bayt")
-                            return image_data
-                        except Exception as e:
-                            logging.error(f"Resim indirilirken hata oluştu: {e}")
-                            await mesaj.channel.send("Resmi işlerken bir hata oluştu. Lütfen tekrar deneyin.")
-                            return None
-                    
-                    async def resim_analiz_et(image_data: bytes, prompt: str) -> str:
-                        try:
-                            logging.info(f"Resim analizi başlatılıyor. İstem: {prompt}")
-                            
-                            # Gemini modeli seçimi
-                            model = genai.GenerativeModel('gemini-1.5-pro')
-                            
-                            # Resim ve metin ile içerik oluşturma
-                            response = model.generate_content([
-                                {'mime_type': 'image/jpeg', 'data': image_data},
-                                prompt
-                            ])
-                            
-                            logging.info("Resim analizi başarıyla tamamlandı")
-                            return response.text
-                        except Exception as e:
-                            logging.error(f"Resim analizinde hata: {str(e)}")
-                            return "Resim analizi sırasında bir hata oluştu. Lütfen daha sonra tekrar deneyin."
-
                     image_data = await resim_indir(attachment)
                     if image_data:
                         prompt = f"Bu resmi analiz et ve şu soruya cevap ver: {içerik}"
@@ -1891,9 +1866,6 @@ async def on_message(mesaj: discord.Message):
         await mesaj.channel.send("An unexpected error occurred. Our team has been notified and we're working on resolving it. Please try again later.")
     finally:
         aktif_kullanıcılar -= 1
-
-
-
 
 # --- Personality and Emotion Adjustment ---
 async def kişiliğe_ve_duyguya_göre_tonu_ayarla(kullanıcı_kimliği: str, istem: str) -> str:
